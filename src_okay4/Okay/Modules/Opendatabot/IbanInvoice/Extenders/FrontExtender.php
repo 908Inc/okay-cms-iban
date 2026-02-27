@@ -3,6 +3,7 @@
 namespace Okay\Modules\Opendatabot\IbanInvoice\Extenders;
 
 use Okay\Core\EntityFactory;
+use Okay\Core\Design;
 use Okay\Core\Modules\Extender\ExtensionInterface;
 use Okay\Core\ServiceLocator;
 use Okay\Entities\CurrenciesEntity;
@@ -60,6 +61,15 @@ class FrontExtender implements ExtensionInterface
     private function isCurrentCurrencyUah(): bool
     {
         $sl = ServiceLocator::getInstance();
+
+        if ($sl->hasService(Design::class)) {
+            /** @var Design $design */
+            $design = $sl->getService(Design::class);
+            $currency = $design->getVar('currency');
+            if (is_object($currency) && isset($currency->code) && is_string($currency->code) && $currency->code !== '') {
+                return strtoupper($currency->code) === 'UAH';
+            }
+        }
 
         /** @var EntityFactory $entityFactory */
         $entityFactory = $sl->getService(EntityFactory::class);

@@ -42,6 +42,11 @@ class CreateInvoiceController extends AbstractController
             return;
         }
 
+        if (!empty($order->paid)) {
+            $this->response->redirectTo(Router::generateUrl('order', ['url' => $order->url], true));
+            return;
+        }
+
         $paymentMethod = $paymentsEntity->get((int) $order->payment_method_id);
         if (empty($paymentMethod) || empty($paymentMethod->id)) {
             $this->setPaymentError('opendatabot_iban_invoice_error_api');
