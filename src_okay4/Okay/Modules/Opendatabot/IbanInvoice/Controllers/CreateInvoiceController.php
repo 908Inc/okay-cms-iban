@@ -3,7 +3,9 @@
 namespace Okay\Modules\Opendatabot\IbanInvoice\Controllers;
 
 use Okay\Controllers\AbstractController;
+use Okay\Core\Database;
 use Okay\Core\Money;
+use Okay\Core\QueryFactory;
 use Okay\Core\Router;
 use Okay\Entities\CurrenciesEntity;
 use Okay\Entities\OrdersEntity;
@@ -14,11 +16,15 @@ use Psr\Log\LoggerInterface;
 
 class CreateInvoiceController extends AbstractController
 {
+    private const PAYMENT_DETAILS_PREFIX = 'opendatabot_iban_invoice_url:';
+
     public function createInvoice(
         OrdersEntity $ordersEntity,
         PaymentsEntity $paymentsEntity,
         CurrenciesEntity $currenciesEntity,
         Money $money,
+        QueryFactory $queryFactory,
+        Database $db,
         LoggerInterface $logger
     )
     {
@@ -53,6 +59,12 @@ class CreateInvoiceController extends AbstractController
         if (empty($paymentCurrency) || strtoupper((string) $paymentCurrency->code) !== 'UAH') {
             $this->setPaymentError('opendatabot_iban_invoice_error_only_uah');
             $this->response->redirectTo(Router::generateUrl('order', ['url' => $order->url], true));
+            return;
+        }
+
+        $storedInvoiceUrl = $this->getStoredInvoiceUrl((int) $order->id, $queryFactory, $db);
+        if ($storedInvoiceUrl !== null) {
+            $this->response->redirectTo($storedInvoiceUrl);
             return;
         }
 
@@ -115,7 +127,42 @@ class CreateInvoiceController extends AbstractController
             return;
         }
 
+        $ordersEntity->update((int) $order->id, [
+            'payment_details' => self::PAYMENT_DETAILS_PREFIX . $redirectUrl,
+        ]);
+
         $this->response->redirectTo($redirectUrl);
+    }
+
+    private function getStoredInvoiceUrl(int $orderId, QueryFactory $queryFactory, Database $db): ?string
+    {
+        $select = $queryFactory->newSelect();
+        $select->cols(['payment_details'])
+            ->from('__orders')
+            ->where('id=:id')
+            ->bindValue('id', $orderId);
+
+        $db->query($select);
+        $paymentDetails = $db->result('payment_details');
+        if (!is_string($paymentDetails) || $paymentDetails === '') {
+            return null;
+        }
+
+        if (strpos($paymentDetails, self::PAYMENT_DETAILS_PREFIX) !== 0) {
+            return null;
+        }
+
+        $url = substr($paymentDetails, strlen(self::PAYMENT_DETAILS_PREFIX));
+        $url = $this->normalizeRedirectUrl($url);
+        if ($url === null) {
+            return null;
+        }
+
+        if (!$this->isAllowedRedirectUrl($url)) {
+            return null;
+        }
+
+        return $url;
     }
 
     private function requestInvoiceRedirectUrl(array $fields, LoggerInterface $logger): ?string
@@ -162,7 +209,11 @@ class CreateInvoiceController extends AbstractController
         if (in_array($status, [301, 302, 303, 307, 308], true)) {
             $location = $this->extractHeaderValue($rawHeaders, 'Location');
             if ($location !== null) {
-                return $this->normalizeRedirectUrl($location);
+                $url = $this->normalizeRedirectUrl($location);
+                if ($url !== null && $this->isAllowedRedirectUrl($url)) {
+                    return $url;
+                }
+                return null;
             }
         }
 
@@ -170,13 +221,21 @@ class CreateInvoiceController extends AbstractController
         if (is_array($decoded)) {
             foreach (['url', 'invoice_url', 'redirect_url', 'redirectUrl'] as $key) {
                 if (!empty($decoded[$key]) && is_string($decoded[$key])) {
-                    return $this->normalizeRedirectUrl($decoded[$key]);
+                    $url = $this->normalizeRedirectUrl($decoded[$key]);
+                    if ($url !== null && $this->isAllowedRedirectUrl($url)) {
+                        return $url;
+                    }
+                    return null;
                 }
             }
             if (!empty($decoded['data']) && is_array($decoded['data'])) {
                 foreach (['url', 'invoice_url', 'redirect_url', 'redirectUrl'] as $key) {
                     if (!empty($decoded['data'][$key]) && is_string($decoded['data'][$key])) {
-                        return $this->normalizeRedirectUrl($decoded['data'][$key]);
+                        $url = $this->normalizeRedirectUrl($decoded['data'][$key]);
+                        if ($url !== null && $this->isAllowedRedirectUrl($url)) {
+                            return $url;
+                        }
+                        return null;
                     }
                 }
             }
@@ -240,6 +299,17 @@ class CreateInvoiceController extends AbstractController
         }
 
         return rtrim(OpendatabotApi::BASE_URL, '/') . '/' . $url;
+    }
+
+    private function isAllowedRedirectUrl(string $url): bool
+    {
+        $parts = parse_url($url);
+        if (!is_array($parts) || empty($parts['host']) || !is_string($parts['host'])) {
+            return false;
+        }
+
+        $host = strtolower($parts['host']);
+        return $host === 'opendatabot.ua' || substr($host, -strlen('.opendatabot.ua')) === '.opendatabot.ua';
     }
 
     private function setPaymentError(string $errorKeyOrMessage): void
