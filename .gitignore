@@ -1,0 +1,10 @@
+.DS_Store
+.idea/
+vendor/
+.php-cs-fixer.cache
+.env
+
+
+# Local work notes (not part of distributable module)
+notes/
+dev/okay4/okaycms/

@@ -1,0 +1,15 @@
+{
+    "name": "opendatabot/okaycms-iban-invoice",
+    "description": "OkayCMS 4.x payment module: IBAN invoice via Opendatabot (redirect-only).",
+    "type": "project",
+    "require": {
+        "php": ">=7.4"
+    },
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.0"
+    },
+    "scripts": {
+        "cs:check": "vendor/bin/php-cs-fixer fix --dry-run --diff --ansi",
+        "cs:fix": "vendor/bin/php-cs-fixer fix --ansi"
+    }
+}
