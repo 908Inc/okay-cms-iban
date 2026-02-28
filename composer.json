@@ -1,6 +1,6 @@
 {
     "name": "opendatabot/okaycms-iban-invoice",
-    "description": "OkayCMS 4.x payment module: IBAN invoice via Opendatabot (redirect-only).",
+    "description": "OkayCMS 3.x/4.x payment module: IBAN invoice via Opendatabot (redirect-only).",
     "type": "project",
     "require": {
         "php": ">=7.4"
