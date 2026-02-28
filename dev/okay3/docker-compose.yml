@@ -1,0 +1,47 @@
+services:
+  nginx:
+    image: nginx:1.25-alpine
+    ports:
+      - "${OKAY3_PORT:-8090}:80"
+    volumes:
+      - ./okaycms:/var/www/okaycms:delegated
+      - ../../src_okay3/Okay/Modules/Opendatabot/IbanInvoice:/var/www/okaycms/Okay/Modules/Opendatabot/IbanInvoice:delegated
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - php
+
+  php:
+    build:
+      context: ./php
+    working_dir: /var/www/okaycms
+    volumes:
+      - ./okaycms:/var/www/okaycms:delegated
+      - ../../src_okay3/Okay/Modules/Opendatabot/IbanInvoice:/var/www/okaycms/Okay/Modules/Opendatabot/IbanInvoice:delegated
+      - ./php/php.ini:/usr/local/etc/php/conf.d/99-custom.ini:ro
+
+  db:
+    image: mariadb:10.6
+    ports:
+      - "${OKAY3_DB_PORT:-33061}:3306"
+    environment:
+      MYSQL_DATABASE: "${OKAY3_DB_NAME:-okaycms3}"
+      MYSQL_USER: "${OKAY3_DB_USER:-okaycms3}"
+      MYSQL_PASSWORD: "${OKAY3_DB_PASS:-okaycms3}"
+      MYSQL_ROOT_PASSWORD: "${OKAY3_DB_ROOT_PASS:-root}"
+    command:
+      - "--character-set-server=utf8mb4"
+      - "--collation-server=utf8mb4_unicode_ci"
+    volumes:
+      - db_data:/var/lib/mysql
+
+  adminer:
+    image: adminer:4
+    ports:
+      - "${OKAY3_ADMINER_PORT:-8091}:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    depends_on:
+      - db
+
+volumes:
+  db_data: {}

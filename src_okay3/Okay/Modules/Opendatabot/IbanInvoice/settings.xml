@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module>
+	<settings>
+		<variable>iban</variable>
+		<name>{$lang->opendatabot_iban_invoice_iban}</name>
+	</settings>
+	<settings>
+		<variable>code</variable>
+		<name>{$lang->opendatabot_iban_invoice_company_code}</name>
+	</settings>
+	<settings>
+		<variable>apiKey</variable>
+		<name>{$lang->opendatabot_iban_invoice_api_key}</name>
+	</settings>
+	<settings>
+		<variable>clientName</variable>
+		<name>{$lang->opendatabot_iban_invoice_client_name}</name>
+	</settings>
+	<settings>
+		<variable>purpose</variable>
+		<name>{$lang->opendatabot_iban_invoice_purpose}</name>
+	</settings>
+</module>
